@@ -1,5 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-/app/segment-verify $@
+mkdir -p /data/$SEGMENT_VERIFY_JOB_ID
+if [ ! -f /data/$SEGMENT_VERIFY_JOB_ID/lock ]; then
+    touch /data/$SEGMENT_VERIFY_JOB_ID/lock
+    /app/segment-verify $@
+fi
 sleep infinity
