@@ -18,6 +18,7 @@ LATEST_TAG := ${BRANCH_NAME}-latest
 endif
 endif
 CUSTOMTAG ?=
+SUB_DIR = ""
 
 FILEEXT :=
 ifeq (${GOOS},windows)
