@@ -511,9 +511,8 @@ OSARCHLIST_SHORT    := linux_amd64
 BINARIES            := $(foreach C,$(COMPONENTLIST),$(foreach O,$(OSARCHLIST),$C_$O))
 BINARIES_SHORT      := $(foreach C,$(COMPONENTLIST_SHORT),$(foreach O,$(OSARCHLIST_SHORT),$C_$O))
 .PHONY: binaries
-binaries: 
-	${BINARIES} ## Build segment-verify jobq certificates, identity, multinode, satellite, storagenode, uplink, versioncontrol and multinode binaries (jenkins)
-	${BINARIES_SHORT}
+binaries: ${BINARIES} ${BINARIES_SHORT} ## Build segment-verify jobq certificates, identity, multinode, satellite, storagenode, uplink, versioncontrol and multinode binaries (jenkins)
+
 
 .PHONY: sign-windows-installer
 sign-windows-installer:
