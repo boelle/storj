@@ -300,18 +300,12 @@ satellite-wasm:
 	scripts/build-wasm.sh ;\
 
 .PHONY: images
-images: segment-verify-image #jobq-image multinode-image satellite-image uplink-image versioncontrol-image storagenode-image modular-storagenode-image ## Build jobq, multinode, satellite and versioncontrol Docker images
+images: segment-verify-image jobq-image multinode-image satellite-image uplink-image versioncontrol-image storagenode-image modular-storagenode-image ## Build jobq, multinode, satellite and versioncontrol Docker images
 	echo Built version: ${TAG}
 
 .PHONY: segment-verify-image
-segment-verify-image: segment-verify_linux_arm segment-verify_linux_arm64 segment-verify_linux_amd64 ## Build segment-verify Docker image
+segment-verify-image: segment-verify_linux_amd64 ## Build segment-verify Docker image
 	${DOCKER_BUILD} --pull=true -t storjlabs/segment-verify:${TAG}${CUSTOMTAG}-amd64 \
-		-f cmd/tools/segment-verify/Dockerfile .
-	${DOCKER_BUILD} --pull=true -t storjlabs/segment-verify:${TAG}${CUSTOMTAG}-arm32v5 \
-		--build-arg=GOARCH=arm --build-arg=DOCKER_ARCH=arm32v5 \
-		-f cmd/tools/segment-verify/Dockerfile .
-	${DOCKER_BUILD} --pull=true -t storjlabs/segment-verify:${TAG}${CUSTOMTAG}-arm64v8 \
-		--build-arg=GOARCH=arm64 --build-arg=DOCKER_ARCH=arm64v8 \
 		-f cmd/tools/segment-verify/Dockerfile .
 
 .PHONY: jobq-image
@@ -510,11 +504,16 @@ multinode_%: multinode-console
 	$(MAKE) binary-check COMPONENT=multinode GOARCH=$(word 3, $(subst _, ,$@)) GOOS=$(word 2, $(subst _, ,$@))
 
 
-COMPONENTLIST := segment-verify #jobq certificates identity multinode satellite storagenode storagenode-updater uplink versioncontrol
-OSARCHLIST    := linux_amd64 linux_arm linux_arm64 windows_amd64 freebsd_amd64
-BINARIES      := $(foreach C,$(COMPONENTLIST),$(foreach O,$(OSARCHLIST),$C_$O))
+COMPONENTLIST := jobq certificates identity multinode satellite storagenode storagenode-updater uplink versioncontrol
+COMPONENTLIST_SHORT := segment-verify
+OSARCHLIST          := linux_amd64 linux_arm linux_arm64 windows_amd64 freebsd_amd64
+OSARCHLIST_SHORT    := linux_amd64
+BINARIES            := $(foreach C,$(COMPONENTLIST),$(foreach O,$(OSARCHLIST),$C_$O))
+BINARIES_SHORT      := $(foreach C,$(COMPONENTLIST_SHORT),$(foreach O,$(OSARCHLIST_SHORT),$C_$O))
 .PHONY: binaries
-binaries: ${BINARIES} ## Build segment-verify jobq certificates, identity, multinode, satellite, storagenode, uplink, versioncontrol and multinode binaries (jenkins)
+binaries: 
+	${BINARIES} ## Build segment-verify jobq certificates, identity, multinode, satellite, storagenode, uplink, versioncontrol and multinode binaries (jenkins)
+	${BINARIES_SHORT}
 
 .PHONY: sign-windows-installer
 sign-windows-installer:
@@ -525,8 +524,7 @@ sign-windows-installer:
 .PHONY: push-images
 push-images: ## Push Docker images to Docker Hub (jenkins)
 	# images have to be pushed before a manifest can be created
-	#set -x; for c in segment-verify jobq multinode satellite uplink versioncontrol ; do \
-	set -x; for c in segment-verify ; do \
+	set -x; for c in jobq multinode satellite uplink versioncontrol ; do \
 		docker push storjlabs/$$c:${TAG}${CUSTOMTAG}-amd64 \
 		&& docker push storjlabs/$$c:${TAG}${CUSTOMTAG}-arm32v5 \
 		&& docker push storjlabs/$$c:${TAG}${CUSTOMTAG}-arm64v8 \
@@ -541,6 +539,20 @@ push-images: ## Push Docker images to Docker Hub (jenkins)
 			&& docker manifest push --purge storjlabs/$$c:$$t \
 		; done \
 	; done
+	
+	set -x; for c in segment-verify ; do \
+		docker push storjlabs/$$c:${TAG}${CUSTOMTAG}-amd64 \
+		&& for t in ${TAG}${CUSTOMTAG} ${LATEST_TAG}; do \
+			docker manifest create --amend storjlabs/$$c:$$t \
+			storjlabs/$$c:${TAG}${CUSTOMTAG}-amd64 \
+			&& docker manifest annotate storjlabs/$$c:$$t storjlabs/$$c:${TAG}${CUSTOMTAG}-amd64 --os linux --arch amd64 \
+			&& docker manifest push --purge storjlabs/$$c:$$t \
+		; done \
+	; done
+	
+	docker push img.dev.storj.io/dev/storagenode:${TAG}${CUSTOMTAG}-amd64
+	REPO=storjlabs/storagenode-modular $(MAKE) push-modular-storagenode-image
+	REPO=ghcr.io/storj/storagenode-modular $(MAKE) push-modular-storagenode-image
 
 .PHONY: binaries-upload
 binaries-upload: ## Upload binaries to Google Storage (jenkins)
@@ -574,12 +586,12 @@ binaries-clean: ## Remove all local release binaries (jenkins)
 
 .PHONY: clean-images
 clean-images:
-    -docker rmi storjlabs/segment-verify:${TAG}${CUSTOMTAG}
-	#-docker rmi storjlabs/jobq:${TAG}${CUSTOMTAG}
-	#-docker rmi storjlabs/multinode:${TAG}${CUSTOMTAG}
-	#-docker rmi storjlabs/satellite:${TAG}${CUSTOMTAG}
-	#-docker rmi storjlabs/versioncontrol:${TAG}${CUSTOMTAG}
-	#-docker rmi img.dev.storj.io/dev/storagenode:${TAG}${CUSTOMTAG}-amd64
+	-docker rmi storjlabs/segment-verify:${TAG}${CUSTOMTAG}
+	-docker rmi storjlabs/jobq:${TAG}${CUSTOMTAG}
+	-docker rmi storjlabs/multinode:${TAG}${CUSTOMTAG}
+	-docker rmi storjlabs/satellite:${TAG}${CUSTOMTAG}
+	-docker rmi storjlabs/versioncontrol:${TAG}${CUSTOMTAG}
+	-docker rmi img.dev.storj.io/dev/storagenode:${TAG}${CUSTOMTAG}-amd64
 
 ##@ Tooling
 
