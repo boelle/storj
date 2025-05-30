@@ -490,7 +490,7 @@ func (service *Service) ProcessSegmentsFromCSV(ctx context.Context, segmentSourc
 			if len(verifySegments.Segments) == 0 {
 				break
 			}
-
+			service.log.Info("segments", zap.Int("count", len(verifySegments.Segments)))
 			segmentsData = segmentsData[:len(verifySegments.Segments)]
 			segments = segments[:len(verifySegments.Segments)]
 			if err != nil {
