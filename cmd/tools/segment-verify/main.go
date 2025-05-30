@@ -10,6 +10,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/zeebo/errs"
@@ -20,6 +21,7 @@ import (
 	"storj.io/common/peertls/tlsopts"
 	"storj.io/common/process"
 	"storj.io/common/rpc"
+	"storj.io/common/rpc/rpcpool"
 	"storj.io/common/signing"
 	"storj.io/common/uuid"
 	"storj.io/storj/private/revocation"
@@ -203,8 +205,6 @@ func verifySegmentsInContext(ctx context.Context, log *zap.Logger, cmd *cobra.Co
 		return Error.Wrap(err)
 	}
 
-	dialer := rpc.NewDefaultDialer(tlsOptions)
-
 	placements, err := satelliteCfg.Placement.Parse(satelliteCfg.Overlay.Node.CreateDefaultPlacement, nil)
 	if err != nil {
 		return Error.Wrap(err)
@@ -245,6 +245,16 @@ func verifySegmentsInContext(ctx context.Context, log *zap.Logger, cmd *cobra.Co
 		}
 	default:
 		return errors.New("unknown command: " + cmd.Name())
+	}
+
+	dialer := rpc.NewDefaultDialer(tlsOptions)
+	if verifyConfig.ConnectionPool {
+		dialer.Pool = rpcpool.New(rpcpool.Options{
+			Capacity:       100,
+			KeyCapacity:    5,
+			IdleExpiration: 2 * time.Minute,
+			MaxLifetime:    30 * time.Minute,
+		})
 	}
 
 	// setup verifier
