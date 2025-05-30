@@ -307,12 +307,6 @@ images: segment-verify-image #jobq-image multinode-image satellite-image uplink-
 segment-verify-image: segment-verify_linux_arm segment-verify_linux_arm64 segment-verify_linux_amd64 ## Build segment-verify Docker image
 	${DOCKER_BUILD} --pull=true -t storjlabs/segment-verify:${TAG}${CUSTOMTAG}-amd64 \
 		-f cmd/tools/segment-verify/Dockerfile .
-	${DOCKER_BUILD} --pull=true -t storjlabs/segment-verify:${TAG}${CUSTOMTAG}-arm32v5 \
-		--build-arg=GOARCH=arm --build-arg=DOCKER_ARCH=arm32v5 \
-		-f cmd/tools/segment-verify/Dockerfile .
-	${DOCKER_BUILD} --pull=true -t storjlabs/segment-verify:${TAG}${CUSTOMTAG}-arm64v8 \
-		--build-arg=GOARCH=arm64 --build-arg=DOCKER_ARCH=arm64v8 \
-		-f cmd/tools/segment-verify/Dockerfile .
 
 .PHONY: jobq-image
 jobq-image: jobq_linux_arm jobq_linux_arm64 jobq_linux_amd64 ## Build jobq Docker image
@@ -536,8 +530,6 @@ push-images: ## Push Docker images to Docker Hub (jenkins)
 			storjlabs/$$c:${TAG}${CUSTOMTAG}-arm32v5 \
 			storjlabs/$$c:${TAG}${CUSTOMTAG}-arm64v8 \
 			&& docker manifest annotate storjlabs/$$c:$$t storjlabs/$$c:${TAG}${CUSTOMTAG}-amd64 --os linux --arch amd64 \
-			&& docker manifest annotate storjlabs/$$c:$$t storjlabs/$$c:${TAG}${CUSTOMTAG}-arm32v5 --os linux --arch arm --variant v5 \
-			&& docker manifest annotate storjlabs/$$c:$$t storjlabs/$$c:${TAG}${CUSTOMTAG}-arm64v8 --os linux --arch arm64 --variant v8 \
 			&& docker manifest push --purge storjlabs/$$c:$$t \
 		; done \
 	; done
