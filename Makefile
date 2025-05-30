@@ -312,12 +312,6 @@ segment-verify-image: segment-verify_linux_amd64 ## Build segment-verify Docker 
 jobq-image: jobq_linux_arm jobq_linux_arm64 jobq_linux_amd64 ## Build jobq Docker image
 	${DOCKER_BUILD} --pull=true -t storjlabs/jobq:${TAG}${CUSTOMTAG}-amd64 \
 		-f cmd/jobq/Dockerfile .
-	${DOCKER_BUILD} --pull=true -t storjlabs/jobq:${TAG}${CUSTOMTAG}-arm32v5 \
-		--build-arg=GOARCH=arm --build-arg=DOCKER_ARCH=arm32v5 \
-		-f cmd/jobq/Dockerfile .
-	${DOCKER_BUILD} --pull=true -t storjlabs/jobq:${TAG}${CUSTOMTAG}-arm64v8 \
-		--build-arg=GOARCH=arm64 --build-arg=DOCKER_ARCH=arm64v8 \
-		-f cmd/jobq/Dockerfile .
 
 .PHONY: multinode-image
 multinode-image: multinode_linux_arm multinode_linux_arm64 multinode_linux_amd64 ## Build multinode Docker image
@@ -504,14 +498,14 @@ multinode_%: multinode-console
 	$(MAKE) binary-check COMPONENT=multinode GOARCH=$(word 3, $(subst _, ,$@)) GOOS=$(word 2, $(subst _, ,$@))
 
 
-COMPONENTLIST := jobq certificates identity multinode satellite storagenode storagenode-updater uplink versioncontrol
-COMPONENTLIST_SHORT := segment-verify
-OSARCHLIST          := linux_amd64 linux_arm linux_arm64 windows_amd64 freebsd_amd64
-OSARCHLIST_SHORT    := linux_amd64
-BINARIES            := $(foreach C,$(COMPONENTLIST),$(foreach O,$(OSARCHLIST),$C_$O))
-BINARIES_SHORT      := $(foreach C,$(COMPONENTLIST_SHORT),$(foreach O,$(OSARCHLIST_SHORT),$C_$O))
+COMPONENTLIST          := certificates identity multinode satellite storagenode storagenode-updater uplink versioncontrol
+COMPONENTLIST_AMD_ONLY := segment-verify jobq
+OSARCHLIST             := linux_amd64 linux_arm linux_arm64 windows_amd64 freebsd_amd64
+OSARCHLIST_AMD_ONLY    := linux_amd64
+BINARIES               := $(foreach C,$(COMPONENTLIST),$(foreach O,$(OSARCHLIST),$C_$O))
+BINARIES_AMD_ONLY      := $(foreach C,$(COMPONENTLIST_AMD_ONLY),$(foreach O,$(OSARCHLIST_AMD_ONLY),$C_$O))
 .PHONY: binaries
-binaries: ${BINARIES} ${BINARIES_SHORT} ## Build segment-verify jobq certificates, identity, multinode, satellite, storagenode, uplink, versioncontrol and multinode binaries (jenkins)
+binaries: ${BINARIES} ${BINARIES_AMD_ONLY} ## Build segment-verify jobq certificates, identity, multinode, satellite, storagenode, uplink, versioncontrol and multinode binaries (jenkins)
 
 
 .PHONY: sign-windows-installer
@@ -523,7 +517,7 @@ sign-windows-installer:
 .PHONY: push-images
 push-images: ## Push Docker images to Docker Hub (jenkins)
 	# images have to be pushed before a manifest can be created
-	set -x; for c in jobq multinode satellite uplink versioncontrol ; do \
+	set -x; for c in multinode satellite uplink versioncontrol ; do \
 		docker push storjlabs/$$c:${TAG}${CUSTOMTAG}-amd64 \
 		&& docker push storjlabs/$$c:${TAG}${CUSTOMTAG}-arm32v5 \
 		&& docker push storjlabs/$$c:${TAG}${CUSTOMTAG}-arm64v8 \
@@ -539,7 +533,7 @@ push-images: ## Push Docker images to Docker Hub (jenkins)
 		; done \
 	; done
 	
-	set -x; for c in segment-verify ; do \
+	set -x; for c in segment-verify jobq ; do \
 		docker push storjlabs/$$c:${TAG}${CUSTOMTAG}-amd64 \
 		&& for t in ${TAG}${CUSTOMTAG} ${LATEST_TAG}; do \
 			docker manifest create --amend storjlabs/$$c:$$t \
