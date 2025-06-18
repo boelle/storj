@@ -253,22 +253,32 @@ func (db *ProjectAccounting) CreateStorageTally(ctx context.Context, tally accou
 	return Error.Wrap(err)
 }
 
-// GetNonEmptyTallyBucketsInRange returns a list of bucket locations within the given range
+// GetPreviouslyNonEmptyTallyBucketsInRange returns a list of bucket locations within the given range
 // whose most recent tally does not represent empty usage.
-func (db *ProjectAccounting) GetNonEmptyTallyBucketsInRange(ctx context.Context, from, to metabase.BucketLocation, asOfSystemInterval time.Duration) (result []metabase.BucketLocation, err error) {
+func (db *ProjectAccounting) GetPreviouslyNonEmptyTallyBucketsInRange(ctx context.Context, from, to metabase.BucketLocation, asOfSystemInterval time.Duration) (result []metabase.BucketLocation, err error) {
 	defer mon.Task()(&ctx)(&err)
 
 	var rows tagsql.Rows
 	switch db.db.impl {
 	case dbutil.Postgres, dbutil.Cockroach:
+		// it constantly bothers me that there isn't a better query
+		// for this class of problem. problem: i want another value in the
+		// row that has the max value within a given group!
+		// see https://stackoverflow.com/questions/12102200/get-records-with-max-value-for-each-group-of-grouped-sql-results
+		// for a list of people banging their heads against the
+		// wall (the highest voted answer is an O(n^2) query!).
 		rows, err = db.db.QueryContext(ctx, `
-		SELECT project_id, name
-		FROM bucket_metainfos bm`+
+		SELECT project_id, bucket_name
+		FROM (
+			SELECT project_id, bucket_name
+			FROM bucket_storage_tallies
+			WHERE (project_id, bucket_name) BETWEEN ($1, $2) AND ($3, $4)
+			GROUP BY project_id, bucket_name
+		) bm`+
 			db.db.impl.AsOfSystemInterval(asOfSystemInterval)+
-			` WHERE (project_id, name) BETWEEN ($1, $2) AND ($3, $4)
-		AND NOT 0 IN (
+			` WHERE NOT 0 IN (
 			SELECT object_count FROM bucket_storage_tallies
-			WHERE (project_id, bucket_name) = (bm.project_id, bm.name)
+			WHERE (project_id, bucket_name) = (bm.project_id, bm.bucket_name)
 			ORDER BY interval_start DESC
 			LIMIT 1
 		)
@@ -277,24 +287,29 @@ func (db *ProjectAccounting) GetNonEmptyTallyBucketsInRange(ctx context.Context,
 		var fromTuple string
 		var toTuple string
 
-		fromTuple, err = spannerutil.TupleGreaterThanSQL([]string{"project_id", "name"}, []string{"@from_project_id", "@from_name"}, true)
+		fromTuple, err = spannerutil.TupleGreaterThanSQL([]string{"project_id", "bucket_name"}, []string{"@from_project_id", "@from_name"}, true)
 		if err != nil {
 			return nil, Error.Wrap(err)
 		}
-		toTuple, err = spannerutil.TupleGreaterThanSQL([]string{"@to_project_id", "@to_name"}, []string{"project_id", "name"}, true)
+		toTuple, err = spannerutil.TupleGreaterThanSQL([]string{"@to_project_id", "@to_name"}, []string{"project_id", "bucket_name"}, true)
 		if err != nil {
 			return nil, Error.Wrap(err)
 		}
 
 		rows, err = db.db.QueryContext(ctx, `
-			SELECT project_id, name
-			FROM bucket_metainfos bm
-			WHERE`+fromTuple+` AND `+toTuple+` AND NOT 0 IN (
-				SELECT object_count
-				FROM bucket_storage_tallies
-				WHERE (project_id, bucket_name) = (bm.project_id, bm.name)
-				ORDER BY interval_start DESC
-				LIMIT 1
+			SELECT project_id, bucket_name FROM (
+				SELECT
+					project_id,
+					bucket_name,
+					ANY_VALUE(object_count HAVING MAX interval_start) AS last_object_count
+				FROM
+					bucket_storage_tallies
+				WHERE `+fromTuple+` AND `+toTuple+`
+				GROUP BY
+					project_id,
+					bucket_name
+				HAVING
+					last_object_count > 0
 			)
 		`, sql.Named("from_project_id", from.ProjectID), sql.Named("from_name", []byte(from.BucketName)), sql.Named("to_project_id", to.ProjectID), sql.Named("to_name", []byte(to.BucketName)))
 	default:
@@ -1290,6 +1305,7 @@ func (db *ProjectAccounting) GetSingleBucketTotals(ctx context.Context, projectI
 		Before:                before,
 		DefaultRetentionDays:  bucketData.defaultRetentionDays,
 		DefaultRetentionYears: bucketData.defaultRetentionYears,
+		CreatedAt:             bucketData.createdAt,
 	}
 	if bucketData.defaultRetentionMode != nil {
 		usage.DefaultRetentionMode = *bucketData.defaultRetentionMode
@@ -1391,7 +1407,7 @@ func (db *ProjectAccounting) GetBucketTotals(ctx context.Context, projectID uuid
 	}
 
 	bucketsQuery := db.db.Rebind(`
-		SELECT name, versioning, placement, object_lock_enabled, default_retention_mode, default_retention_days, default_retention_years
+		SELECT name, versioning, placement, object_lock_enabled, default_retention_mode, default_retention_days, default_retention_years, created_at
 		FROM bucket_metainfos
 		WHERE project_id = ? AND ` + bucketNameRange + `ORDER BY name ASC LIMIT ? OFFSET ?`,
 	)
@@ -1421,6 +1437,7 @@ func (db *ProjectAccounting) GetBucketTotals(ctx context.Context, projectID uuid
 			defaultRetentionMode  *storj.RetentionMode
 			defaultRetentionDays  *int
 			defaultRetentionYears *int
+			createdAt             time.Time
 		)
 		err = bucketRows.Scan(
 			&bucket,
@@ -1430,6 +1447,7 @@ func (db *ProjectAccounting) GetBucketTotals(ctx context.Context, projectID uuid
 			&defaultRetentionMode,
 			&defaultRetentionDays,
 			&defaultRetentionYears,
+			&createdAt,
 		)
 		if err != nil {
 			return nil, err
@@ -1445,6 +1463,7 @@ func (db *ProjectAccounting) GetBucketTotals(ctx context.Context, projectID uuid
 			DefaultRetentionYears: defaultRetentionYears,
 			Since:                 since,
 			Before:                before,
+			CreatedAt:             createdAt,
 		}
 		if defaultRetentionMode != nil {
 			usage.DefaultRetentionMode = *defaultRetentionMode
