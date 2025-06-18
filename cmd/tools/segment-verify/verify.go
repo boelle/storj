@@ -36,6 +36,7 @@ type VerifierConfig struct {
 	DialTimeout        time.Duration `help:"how long to wait for a successful dial" default:"2s"`
 	PerPieceTimeout    time.Duration `help:"duration to wait per piece download" default:"800ms"`
 	OrderRetryThrottle time.Duration `help:"how much to wait before retrying order creation" default:"50ms"`
+	ConnectionPool     bool          `help:"use connection pool for SN connections" default:"true"`
 
 	RequestThrottle time.Duration `help:"minimum interval for sending out each request" default:"150ms"`
 }
@@ -108,7 +109,12 @@ func (service *NodeVerifier) Verify(ctx context.Context, alias metabase.NodeAlia
 			if dialCount > maxDials {
 				return i, ErrNodeOffline.New("too many redials")
 			}
-			client, err = piecestore.Dial(rpcpool.WithForceDial(ctx), service.dialer, target, piecestore.DefaultConfig)
+
+			dialctx := ctx
+			if !service.config.ConnectionPool {
+				dialctx = rpcpool.WithForceDial(ctx)
+			}
+			client, err = piecestore.Dial(dialctx, service.dialer, target, piecestore.DefaultConfig)
 			if err != nil {
 				service.log.Info("failed to dial node",
 					zap.Stringer("node-id", target.ID),
@@ -210,7 +216,7 @@ func (service *NodeVerifier) verifySegment(ctx context.Context, client *piecesto
 		return audit.OutcomeUnknownError, nil
 	}
 
-	logger.Info("download succeeded")
+	logger.Debug("download succeeded")
 	return audit.OutcomeSuccess, nil
 }
 
