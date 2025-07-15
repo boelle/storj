@@ -1,13 +1,13 @@
 ARG GO_VERSION=1.24.2
 
-FROM debian:bookworm-slim AS base
+FROM debian:bullseye-slim AS base
 RUN apt-get update
 
 FROM base AS ca-cert
 RUN apt-get install -y --no-install-recommends ca-certificates
 RUN update-ca-certificates
 
-FROM golang:${GO_VERSION}-bookworm AS builder
+FROM golang:${GO_VERSION}-bullseye AS builder
 COPY go.mod go.sum ./
 RUN go mod download
 COPY ./satellite ./satellite

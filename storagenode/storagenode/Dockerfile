@@ -3,14 +3,14 @@ ARG DOCKER_ARCH
 ARG GO_DOCKER_PLATFORM
 ARG GO_VERSION=1.24.2
 
-FROM --platform=${DOCKER_PLATFORM:-linux/amd64} ${DOCKER_ARCH:-amd64}/debian:bookworm-slim AS base
+FROM --platform=${DOCKER_PLATFORM:-linux/amd64} ${DOCKER_ARCH:-amd64}/debian:bullseye-slim AS base
 RUN apt-get update
 
 FROM base AS ca-cert
 RUN apt-get install -y --no-install-recommends ca-certificates
 RUN update-ca-certificates
 
-FROM --platform=${GO_DOCKER_PLATFORM:-linux/amd64} golang:${GO_VERSION}-bookworm AS builder
+FROM --platform=${GO_DOCKER_PLATFORM:-linux/amd64} golang:${GO_VERSION}-bullseye AS builder
 ARG CGO_ENABLED=1
 ARG BUILD_VERSION
 ARG BUILD_DATE

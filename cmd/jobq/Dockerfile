@@ -1,4 +1,4 @@
-FROM ${DOCKER_ARCH:-amd64}/debian:bookworm-slim
+FROM ${DOCKER_ARCH:-amd64}/debian:bullseye-slim
 ARG TAG
 ARG GOARCH
 ENV GOARCH ${GOARCH}
