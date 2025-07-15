@@ -7,6 +7,7 @@ FROM --platform=${DOCKER_PLATFORM:-linux/amd64} ${DOCKER_ARCH:-amd64}/debian:boo
 RUN apt-get update
 
 FROM base AS ca-cert
+RUN echo "deb http://archive.debian.org/debian buster main\ndeb http://archive.debian.org/debian-security buster/updates main\ndeb http://archive.debian.org/debian buster-updates main">/etc/apt/sources.list
 RUN apt-get install -y --no-install-recommends ca-certificates
 RUN update-ca-certificates
 
