@@ -317,10 +317,10 @@ jobq-image: jobq_linux_arm jobq_linux_arm64 jobq_linux_amd64 ## Build jobq Docke
 multinode-image: multinode_linux_arm multinode_linux_arm64 multinode_linux_amd64 ## Build multinode Docker image
 	${DOCKER_BUILD} --pull=true -t storjlabs/multinode:${TAG}${CUSTOMTAG}-amd64 \
 		-f cmd/multinode/Dockerfile .
-	${DOCKER_BUILD} --pull=true -t storjlabs/multinode:${TAG}${CUSTOMTAG}-arm32v5 \
+	${DOCKER_BUILD} --pull=true --platform=linux/arm/v5 -t storjlabs/multinode:${TAG}${CUSTOMTAG}-arm32v5 \
 		--build-arg=GOARCH=arm --build-arg=DOCKER_ARCH=arm32v5 \
 		-f cmd/multinode/Dockerfile .
-	${DOCKER_BUILD} --pull=true -t storjlabs/multinode:${TAG}${CUSTOMTAG}-arm64v8 \
+	${DOCKER_BUILD} --pull=true --platform=linux/arm64/v8 -t storjlabs/multinode:${TAG}${CUSTOMTAG}-arm64v8 \
 		--build-arg=GOARCH=arm64 --build-arg=DOCKER_ARCH=arm64v8 \
 		-f cmd/multinode/Dockerfile .
 
