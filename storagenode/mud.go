@@ -46,8 +46,8 @@ import (
 	"storj.io/storj/storagenode/notifications"
 	"storj.io/storj/storagenode/operator"
 	"storj.io/storj/storagenode/orders"
-	"storj.io/storj/storagenode/payouts"
-	"storj.io/storj/storagenode/payouts/estimatedpayouts"
+	
+	
 	"storj.io/storj/storagenode/piecemigrate"
 	"storj.io/storj/storagenode/pieces"
 	"storj.io/storj/storagenode/pieces/lazyfilewalker"
@@ -391,11 +391,6 @@ func Module(ball *mud.Ball) {
 		mud.Tag[*orders.Service, modular.Service](ball, modular.Service{})
 	}
 
-	{ // setup payouts.
-		mud.Provide[*payouts.Service](ball, payouts.NewService)
-		mud.Provide[*payouts.Endpoint](ball, payouts.NewEndpoint)
-	}
-
 	{ // setup reputation service.
 		mud.Provide[*reputation.Service](ball, reputation.NewService)
 		mud.Provide[*reputation.Chore](ball, reputation.NewChore)
@@ -404,10 +399,10 @@ func Module(ball *mud.Ball) {
 
 	{ // setup node stats service
 		mud.Provide[*nodestats.Service](ball, nodestats.NewService)
-		mud.Provide[nodestats.CacheStorage](ball, func(sdb storageusage.DB, pdb payouts.DB, prdb pricing.DB) nodestats.CacheStorage {
+		mud.Provide[nodestats.CacheStorage](ball, func(sdb storageusage.DB, prdb pricing.DB) nodestats.CacheStorage {
+	
 			return nodestats.CacheStorage{
 				StorageUsage: sdb,
-				Payout:       pdb,
 				Pricing:      prdb,
 			}
 		})
