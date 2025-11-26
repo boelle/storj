@@ -781,25 +781,6 @@ func New(log *zap.Logger, full *identity.FullIdentity, db DB, revocationDB exten
 			debug.Cycle("Orders Cleanup", peer.Storage2.Orders.Cleanup))
 	}
 
-	{ // setup payouts.
-		peer.Payout.Service, err = payouts.NewService(
-			process.NamedLog(peer.Log, "payouts:service"),
-			peer.DB.Payout(),
-			peer.DB.Reputation(),
-			peer.DB.Satellites(),
-			peer.Storage2.Trust,
-		)
-		if err != nil {
-			return nil, errs.Combine(err, peer.Close())
-		}
-
-		peer.Payout.Endpoint = payouts.NewEndpoint(
-			process.NamedLog(peer.Log, "payouts:endpoint"),
-			peer.Dialer,
-			peer.Storage2.Trust,
-		)
-	}
-
 	{ // setup reputation service.
 		peer.Reputation.Service = reputation.NewService(
 			process.NamedLog(peer.Log, "reputation:service"),
@@ -842,7 +823,6 @@ func New(log *zap.Logger, full *identity.FullIdentity, db DB, revocationDB exten
 				Pricing:      peer.DB.Pricing(),
 			},
 			peer.NodeStats.Service,
-			peer.Payout.Endpoint,
 			peer.Storage2.Trust,
 		)
 		peer.Services.Add(lifecycle.Item{
@@ -908,7 +888,6 @@ func New(log *zap.Logger, full *identity.FullIdentity, db DB, revocationDB exten
 			assets,
 			peer.Notifications.Service,
 			peer.Console.Service,
-			peer.Payout.Service,
 			peer.Console.Listener,
 		)
 
@@ -1064,7 +1043,6 @@ func New(log *zap.Logger, full *identity.FullIdentity, db DB, revocationDB exten
 			apiKeys,
 			peer.DB.Payout(),
 			peer.Estimation.Service,
-			peer.Payout.Service,
 		)
 
 		if err = multinodepb.DRPCRegisterStorage(peer.Server.DRPC(), peer.Multinode.Storage); err != nil {
@@ -1076,12 +1054,7 @@ func New(log *zap.Logger, full *identity.FullIdentity, db DB, revocationDB exten
 		if err = multinodepb.DRPCRegisterNode(peer.Server.DRPC(), peer.Multinode.Node); err != nil {
 			return nil, errs.Combine(err, peer.Close())
 		}
-		if err = multinodepb.DRPCRegisterPayout(peer.Server.DRPC(), peer.Multinode.Payout); err != nil {
-			return nil, errs.Combine(err, peer.Close())
-		}
-		if err = multinodepb.DRPCRegisterPayouts(peer.Server.DRPC(), peer.Multinode.Payout); err != nil {
-			return nil, errs.Combine(err, peer.Close())
-		}
+
 	}
 
 	return peer, nil
