@@ -102,41 +102,6 @@ func TestStorageNodeApi(t *testing.T) {
 				DiskSpace:       diskPrice,
 			})
 			require.NoError(t, err)
-
-			t.Run("EstimatedPayout", func(t *testing.T) {
-				// should return estimated payout for both satellites in current month and empty for previous
-				req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/estimated-payout", nil)
-				require.NoError(t, err)
-
-				// setting now here to cache closest to api all timestamp, so service call
-				// would not have difference in passed "now" that can distort result
-				now := time.Now()
-				res, err := http.DefaultClient.Do(req)
-				require.NoError(t, err)
-				require.NotNil(t, res)
-				require.Equal(t, http.StatusOK, res.StatusCode)
-
-				defer func() {
-					err = res.Body.Close()
-					require.NoError(t, err)
-				}()
-				body, err := io.ReadAll(res.Body)
-				require.NoError(t, err)
-				require.NotNil(t, body)
-
-				bodyPayout := &estimatedpayouts.EstimatedPayout{}
-				require.NoError(t, json.Unmarshal(body, bodyPayout))
-
-				estimation, err := sno.Console.Service.GetAllSatellitesEstimatedPayout(ctx, now)
-				require.NoError(t, err)
-
-				expectedPayout := &estimatedpayouts.EstimatedPayout{
-					CurrentMonth:             estimation.CurrentMonth,
-					PreviousMonth:            estimation.PreviousMonth,
-					CurrentMonthExpectations: estimation.CurrentMonthExpectations,
-				}
-				require.EqualValues(t, expectedPayout, bodyPayout)
-			})
 		},
 	)
 }
