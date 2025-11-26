@@ -70,8 +70,7 @@ func NewServer(logger *zap.Logger, assets fs.FS, notifications *notifications.Se
 	storageNodeRouter.HandleFunc("/satellites", storageNodeController.Satellites).Methods(http.MethodGet)
 	storageNodeRouter.HandleFunc("/satellite/{id}", storageNodeController.Satellite).Methods(http.MethodGet)
 	storageNodeRouter.HandleFunc("/satellites/{id}/pricing", storageNodeController.Pricing).Methods(http.MethodGet)
-	storageNodeRouter.HandleFunc("/estimated-payout", storageNodeController.EstimatedPayout).Methods(http.MethodGet)
-
+	
 	notificationController := consoleapi.NewNotifications(server.log, server.notifications)
 	notificationRouter := router.PathPrefix("/api/notifications").Subrouter()
 	notificationRouter.StrictSlash(true)
