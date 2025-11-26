@@ -22,8 +22,7 @@ import (
 	"storj.io/storj/storagenode/console"
 	"storj.io/storj/storagenode/console/consoleapi"
 	"storj.io/storj/storagenode/notifications"
-	"storj.io/storj/storagenode/payouts"
-)
+	)
 
 var (
 	mon = monkit.Package()
@@ -45,7 +44,6 @@ type Server struct {
 
 	service       *console.Service
 	notifications *notifications.Service
-	payout        *payouts.Service
 	listener      net.Listener
 	assets        fs.FS
 
@@ -53,14 +51,13 @@ type Server struct {
 }
 
 // NewServer creates new instance of storagenode console web server.
-func NewServer(logger *zap.Logger, assets fs.FS, notifications *notifications.Service, service *console.Service, payout *payouts.Service, listener net.Listener) *Server {
+func NewServer(logger *zap.Logger, assets fs.FS, notifications *notifications.Service, service *console.Service, listener net.Listener) *Server {
 	server := Server{
 		log:           logger,
 		service:       service,
 		listener:      listener,
 		assets:        assets,
 		notifications: notifications,
-		payout:        payout,
 	}
 
 	router := mux.NewRouter()
@@ -81,15 +78,6 @@ func NewServer(logger *zap.Logger, assets fs.FS, notifications *notifications.Se
 	notificationRouter.HandleFunc("/list", notificationController.ListNotifications).Methods(http.MethodGet)
 	notificationRouter.HandleFunc("/{id}/read", notificationController.ReadNotification).Methods(http.MethodPost)
 	notificationRouter.HandleFunc("/readall", notificationController.ReadAllNotifications).Methods(http.MethodPost)
-
-	payoutController := consoleapi.NewPayout(server.log, server.payout)
-	payoutRouter := router.PathPrefix("/api/heldamount").Subrouter()
-	payoutRouter.StrictSlash(true)
-	payoutRouter.HandleFunc("/paystubs/{period}", payoutController.PayStubMonthly).Methods(http.MethodGet)
-	payoutRouter.HandleFunc("/paystubs/{start}/{end}", payoutController.PayStubPeriod).Methods(http.MethodGet)
-	payoutRouter.HandleFunc("/held-history", payoutController.HeldHistory).Methods(http.MethodGet)
-	payoutRouter.HandleFunc("/periods", payoutController.HeldAmountPeriods).Methods(http.MethodGet)
-	payoutRouter.HandleFunc("/payout-history/{period}", payoutController.PayoutHistory).Methods(http.MethodGet)
 
 	staticServer := http.FileServer(http.FS(server.assets))
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", web.CacheHandler(staticServer)))
