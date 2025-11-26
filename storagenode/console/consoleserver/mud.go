@@ -16,13 +16,12 @@ import (
 	"storj.io/storj/shared/mud"
 	"storj.io/storj/storagenode/console"
 	"storj.io/storj/storagenode/notifications"
-	"storj.io/storj/storagenode/payouts"
-)
+	)
 
 // Module registers the console server dependency injection components.
 func Module(ball *mud.Ball, assets fs.FS) {
 	config.RegisterConfig[Config](ball, "config")
-	mud.Provide[*Server](ball, func(logger *zap.Logger, notifications *notifications.Service, service *console.Service, payout *payouts.Service, config Config) (*Server, error) {
+	mud.Provide[*Server](ball, func(logger *zap.Logger, notifications *notifications.Service, service *console.Service, config Config) (*Server, error) {
 		listener, err := net.Listen("tcp", config.Address)
 		if err != nil {
 			return nil, err
@@ -35,7 +34,7 @@ func Module(ball *mud.Ball, assets fs.FS) {
 			distDir := filepath.Join(config.StaticDir, "dist")
 			assets = os.DirFS(distDir)
 		}
-		return NewServer(logger, assets, notifications, service, payout, listener), nil
+		return NewServer(logger, assets, notifications, service, listener), nil
 	})
 	mud.Tag[*Server](ball, modular.Service{})
 }
