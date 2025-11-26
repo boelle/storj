@@ -31,8 +31,8 @@ func DBModule(ball *mud.Ball) {
 	mud.RegisterInterfaceImplementation[bandwidth.Writer, *storagenodedb.BandwidthDB](ball)
 	mud.RegisterInterfaceImplementation[bandwidth.DB, *storagenodedb.BandwidthDB](ball)
 	mud.View(ball, DB.Orders)
-	mud.View(ball, DB.Payout)
-	mud.View(ball, DB.Pricing)
+	
+	
 	mud.View(ball, DB.GCFilewalkerProgress)
 	mud.View(ball, DB.V0PieceInfo)
 	mud.View(ball, DB.PieceSpaceUsedDB)
